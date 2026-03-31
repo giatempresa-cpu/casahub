@@ -1,0 +1,1430 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CasaHub — Gestão Inteligente do Lar</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --cream: #FAF7F2; --warm-white: #FDFCFA;
+  --brown-100: #F0E8DC; --brown-200: #D9C9B5;
+  --brown-400: #A8896E; --brown-600: #7A5C42;
+  --brown-800: #4A3728;
+  --green-soft: #7DAF8C; --green-muted: #4E7C5F;
+  --terracotta: #C4694A; --terracotta-light: #E8896E;
+  --blue-soft: #6A8FAF; --yellow-warm: #D4A847;
+  --shadow-sm: 0 1px 3px rgba(74,55,40,0.08);
+  --shadow-md: 0 4px 16px rgba(74,55,40,0.12);
+  --shadow-lg: 0 12px 40px rgba(74,55,40,0.18);
+  --radius: 16px; --radius-sm: 8px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--brown-800);min-height:100vh;overflow-x:hidden;}
+h1,h2,h3{font-family:'Playfair Display',serif;}
+
+/* ===== AUTH SCREEN ===== */
+#auth-screen {
+  min-height:100vh; display:flex; align-items:center; justify-content:center;
+  background: var(--brown-800);
+  position:relative; overflow:hidden;
+}
+#auth-screen::before {
+  content:''; position:absolute; inset:0;
+  background: radial-gradient(ellipse at 20% 50%, rgba(196,105,74,0.3) 0%, transparent 60%),
+              radial-gradient(ellipse at 80% 20%, rgba(125,175,140,0.2) 0%, transparent 50%);
+}
+.auth-pattern {
+  position:absolute; inset:0; opacity:0.04;
+  background-image: repeating-linear-gradient(45deg, #fff 0, #fff 1px, transparent 0, transparent 50%);
+  background-size: 20px 20px;
+}
+.auth-card {
+  position:relative; z-index:1;
+  background: var(--warm-white); border-radius: 24px;
+  padding: 48px 44px; width: 420px; max-width: 92vw;
+  box-shadow: var(--shadow-lg);
+  animation: authSlide 0.5s cubic-bezier(.22,1,.36,1);
+}
+@keyframes authSlide {
+  from { opacity:0; transform:translateY(24px) scale(0.97); }
+  to   { opacity:1; transform:translateY(0) scale(1); }
+}
+.auth-logo {
+  display:flex; align-items:center; gap:12px; margin-bottom:32px;
+}
+.auth-logo-icon {
+  width:52px; height:52px; background:var(--terracotta);
+  border-radius:14px; display:flex; align-items:center;
+  justify-content:center; font-size:26px;
+  box-shadow: 0 8px 20px rgba(196,105,74,0.35);
+}
+.auth-logo-text h1 { font-size:26px; color:var(--brown-800); }
+.auth-logo-text span { font-size:11px; color:var(--brown-400); letter-spacing:2px; text-transform:uppercase; }
+.auth-tabs {
+  display:flex; background:var(--brown-100); border-radius:10px;
+  padding:4px; margin-bottom:28px;
+}
+.auth-tab {
+  flex:1; padding:9px; border-radius:7px; border:none;
+  background:transparent; font-family:'DM Sans'; font-size:14px;
+  cursor:pointer; color:var(--brown-400); font-weight:500; transition:all 0.2s;
+}
+.auth-tab.active { background:white; color:var(--brown-800); box-shadow:var(--shadow-sm); }
+.form-group { margin-bottom:16px; }
+.form-label { font-size:13px; font-weight:500; color:var(--brown-600); margin-bottom:6px; display:block; }
+.form-input {
+  width:100%; padding:11px 14px; border:1.5px solid var(--brown-200);
+  border-radius:var(--radius-sm); font-size:14px; font-family:'DM Sans';
+  background:var(--warm-white); color:var(--brown-800); transition:border-color 0.2s; outline:none;
+}
+.form-input:focus { border-color:var(--terracotta); box-shadow:0 0 0 3px rgba(196,105,74,0.1); }
+.btn {
+  padding:11px 20px; border-radius:var(--radius-sm); border:none;
+  cursor:pointer; font-size:14px; font-family:'DM Sans'; font-weight:500;
+  transition:all 0.2s; display:flex; align-items:center; gap:8px;
+}
+.btn-primary { background:var(--terracotta); color:white; width:100%; justify-content:center; }
+.btn-primary:hover { background:#b55a3c; transform:translateY(-1px); box-shadow:0 6px 20px rgba(196,105,74,0.35); }
+.btn-primary:disabled { background:var(--brown-200); color:var(--brown-400); transform:none; box-shadow:none; cursor:not-allowed; }
+.btn-ghost { background:white; color:var(--brown-600); border:1.5px solid var(--brown-200); }
+.btn-ghost:hover { background:var(--brown-100); }
+.btn-sm { padding:7px 14px; font-size:12px; }
+.btn-danger { background:#fee2e2; color:#c0392b; border:1px solid #fca5a5; }
+.btn-danger:hover { background:#fecaca; }
+.auth-error {
+  background:#fee2e2; color:#c0392b; border:1px solid #fca5a5;
+  border-radius:8px; padding:10px 14px; font-size:13px;
+  margin-bottom:16px; display:none;
+}
+.auth-divider { text-align:center; color:var(--brown-400); font-size:12px; margin:16px 0; }
+
+/* ===== APP LAYOUT ===== */
+#app-screen { display:none; }
+.app { display:flex; min-height:100vh; }
+
+.sidebar {
+  width:260px; min-height:100vh; background:var(--brown-800);
+  padding:24px 16px; display:flex; flex-direction:column;
+  position:fixed; left:0; top:0; z-index:100; transition:transform 0.3s;
+}
+.sidebar-logo { display:flex; align-items:center; gap:10px; padding:8px 12px 24px; border-bottom:1px solid rgba(255,255,255,0.1); margin-bottom:20px; }
+.sidebar-logo-icon { width:38px; height:38px; background:var(--terracotta); border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:20px; }
+.sidebar-logo h1 { color:var(--cream); font-size:18px; font-weight:600; }
+.sidebar-logo span { color:var(--brown-400); font-size:11px; font-family:'DM Sans'; letter-spacing:1px; }
+.nav-section { margin-bottom:20px; }
+.nav-label { color:var(--brown-400); font-size:10px; letter-spacing:1.5px; text-transform:uppercase; padding:0 12px; margin-bottom:6px; }
+.nav-item {
+  display:flex; align-items:center; gap:10px; padding:10px 12px;
+  border-radius:var(--radius-sm); color:var(--brown-200); font-size:14px;
+  cursor:pointer; transition:all 0.2s; margin-bottom:2px;
+}
+.nav-item:hover { background:rgba(255,255,255,0.08); color:var(--cream); }
+.nav-item.active { background:var(--terracotta); color:white; font-weight:500; }
+.nav-item .icon { font-size:16px; width:20px; text-align:center; }
+.sidebar-footer { margin-top:auto; padding:16px 12px; border-top:1px solid rgba(255,255,255,0.1); }
+.user-card { display:flex; align-items:center; gap:10px; }
+.avatar { width:36px; height:36px; border-radius:50%; background:var(--terracotta-light); display:flex; align-items:center; justify-content:center; color:white; font-weight:600; font-size:14px; flex-shrink:0; }
+.user-info .name { color:var(--cream); font-size:13px; font-weight:500; }
+.user-info .role { color:var(--brown-400); font-size:11px; }
+.logout-btn { margin-top:10px; width:100%; padding:8px; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.05); color:var(--brown-200); cursor:pointer; font-family:'DM Sans'; font-size:13px; transition:all 0.2s; }
+.logout-btn:hover { background:rgba(196,105,74,0.2); color:white; }
+
+.main { margin-left:260px; flex:1; padding:28px 32px; min-height:100vh; }
+.topbar { display:flex; align-items:center; justify-content:space-between; margin-bottom:28px; }
+.topbar-left h2 { font-size:26px; color:var(--brown-800); font-weight:700; }
+.topbar-left .subtitle { color:var(--brown-400); font-size:14px; margin-top:2px; }
+.topbar-right { display:flex; gap:10px; align-items:center; }
+
+.page { display:none; animation:fadeIn 0.3s ease; }
+.page.active { display:block; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);} }
+
+.grid { display:grid; gap:16px; }
+.grid-4 { grid-template-columns:repeat(4,1fr); }
+.grid-3 { grid-template-columns:repeat(3,1fr); }
+.grid-2 { grid-template-columns:repeat(2,1fr); }
+.two-col { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+@media(max-width:900px){.two-col{grid-template-columns:1fr;}}
+
+.card { background:white; border-radius:var(--radius); padding:20px; box-shadow:var(--shadow-sm); border:1px solid var(--brown-100); transition:all 0.2s; }
+.card:hover { box-shadow:var(--shadow-md); }
+.stat-card { background:white; border-radius:var(--radius); padding:20px; box-shadow:var(--shadow-sm); border:1px solid var(--brown-100); }
+.stat-icon { width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:22px; margin-bottom:14px; }
+.stat-value { font-size:26px; font-weight:700; font-family:'Playfair Display'; margin-bottom:4px; }
+.stat-label { font-size:13px; color:var(--brown-400); }
+.section-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+.section-title { font-size:16px; font-weight:600; font-family:'Playfair Display'; }
+
+.task-item { display:flex; align-items:center; gap:12px; padding:11px 14px; border-radius:var(--radius-sm); background:var(--warm-white); margin-bottom:6px; border:1px solid var(--brown-100); cursor:pointer; transition:all 0.15s; }
+.task-item:hover { background:var(--brown-100); }
+.task-check { width:20px; height:20px; border-radius:50%; border:2px solid var(--brown-200); display:flex; align-items:center; justify-content:center; cursor:pointer; transition:all 0.2s; flex-shrink:0; font-size:11px; }
+.task-check.done { background:var(--green-soft); border-color:var(--green-soft); color:white; }
+.task-text { flex:1; font-size:14px; }
+.task-text.done-text { text-decoration:line-through; color:var(--brown-400); }
+.task-tag { font-size:11px; padding:3px 8px; border-radius:20px; font-weight:500; white-space:nowrap; }
+.tag-limpeza{background:#E8F5F0;color:#2D7A5E;}
+.tag-manutencao{background:#FEF3E8;color:#B8601E;}
+.tag-compras{background:#EEF4FB;color:#2E6B9E;}
+.tag-admin{background:#F4EEFB;color:#6B2EA3;}
+.tag-jardim{background:#EDFAE7;color:#3B7A2E;}
+
+.tab-bar { display:flex; gap:4px; background:var(--brown-100); border-radius:10px; padding:4px; margin-bottom:16px; }
+.tab { flex:1; padding:8px; border-radius:7px; border:none; background:transparent; font-family:'DM Sans'; font-size:13px; cursor:pointer; color:var(--brown-400); font-weight:500; transition:all 0.15s; }
+.tab.active { background:white; color:var(--brown-800); box-shadow:var(--shadow-sm); }
+
+.status-badge { font-size:11px; padding:4px 10px; border-radius:20px; font-weight:600; white-space:nowrap; }
+.status-confirmado{background:#E8F5F0;color:#2D7A5E;}
+.status-pendente{background:#FEF3E8;color:#B8601E;}
+.status-concluido{background:#EEF0F4;color:#5A6572;}
+.status-urgente{background:#FEE2E2;color:#C0392B;}
+
+.fin-item { display:flex; align-items:center; justify-content:space-between; padding:11px 14px; border-radius:var(--radius-sm); background:var(--warm-white); margin-bottom:6px; border:1px solid var(--brown-100); }
+.fin-left { display:flex; align-items:center; gap:12px; }
+.fin-icon { width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0; }
+.fin-name { font-size:14px; font-weight:500; }
+.fin-date { font-size:12px; color:var(--brown-400); }
+.fin-amount { font-size:15px; font-weight:600; }
+.fin-expense{color:var(--terracotta);}
+.fin-income{color:var(--green-muted);}
+
+.inv-item { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; border-radius:var(--radius-sm); background:var(--warm-white); margin-bottom:6px; border:1px solid var(--brown-100); }
+.inv-qty { display:flex; align-items:center; gap:8px; }
+.qty-btn { width:26px; height:26px; border-radius:6px; border:1px solid var(--brown-200); background:white; cursor:pointer; font-size:14px; display:flex; align-items:center; justify-content:center; transition:all 0.15s; }
+.qty-btn:hover { background:var(--brown-100); }
+.qty-num { font-size:14px; font-weight:600; min-width:28px; text-align:center; }
+.low-stock{color:var(--terracotta);}
+
+.progress-bar { height:8px; background:var(--brown-100); border-radius:99px; overflow:hidden; }
+.progress-fill { height:100%; border-radius:99px; transition:width 0.5s ease; }
+
+.alert { padding:11px 14px; border-radius:var(--radius-sm); display:flex; align-items:center; gap:10px; margin-bottom:10px; font-size:13px; }
+.alert-warn{background:#FEF3E8;color:#B8601E;border:1px solid #F5CDA0;}
+.alert-info{background:#EEF4FB;color:#2E6B9E;border:1px solid #B8D1E8;}
+.alert-success{background:#E8F5F0;color:#2D7A5E;border:1px solid #A8D9C4;}
+
+.cal-nav { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+.cal-nav h3 { font-size:16px; font-weight:600; }
+.cal-btn { width:32px; height:32px; border-radius:50%; border:1px solid var(--brown-200); background:white; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:14px; transition:all 0.15s; }
+.cal-btn:hover { background:var(--brown-100); }
+.calendar-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; }
+.cal-header { text-align:center; font-size:11px; color:var(--brown-400); font-weight:600; padding:8px 4px; text-transform:uppercase; letter-spacing:0.5px; }
+.cal-day { aspect-ratio:1; display:flex; flex-direction:column; align-items:center; justify-content:center; border-radius:8px; cursor:pointer; transition:all 0.15s; font-size:13px; font-weight:500; position:relative; }
+.cal-day:hover { background:var(--brown-100); }
+.cal-day.today { background:var(--terracotta); color:white; font-weight:700; }
+.cal-day.other-month { color:var(--brown-200); }
+.cal-day.reserved { background:rgba(100,143,175,0.2); color:var(--blue-soft); font-weight:600; }
+.cal-day.cleaning { background:rgba(125,175,140,0.2); color:var(--green-muted); font-weight:600; }
+.cal-day.event::after { content:''; position:absolute; bottom:3px; width:4px; height:4px; border-radius:50%; background:var(--yellow-warm); }
+.cal-day.today.event::after { background:rgba(255,255,255,0.8); }
+
+.timeline-item { display:flex; gap:14px; padding-bottom:18px; position:relative; }
+.timeline-item::before { content:''; position:absolute; left:17px; top:34px; width:2px; background:var(--brown-100); bottom:0; }
+.timeline-item:last-child::before { display:none; }
+.tl-dot { width:36px; height:36px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:16px; position:relative; z-index:1; }
+.tl-body { flex:1; padding-top:4px; }
+.tl-title { font-size:14px; font-weight:600; margin-bottom:2px; }
+.tl-time { font-size:12px; color:var(--brown-400); }
+.tl-desc { font-size:13px; color:var(--brown-600); margin-top:3px; }
+
+.room-card { background:white; border-radius:var(--radius); padding:18px; border:1px solid var(--brown-100); box-shadow:var(--shadow-sm); transition:all 0.2s; }
+.room-card:hover { box-shadow:var(--shadow-md); transform:translateY(-2px); }
+
+.reserva-card { background:white; border-radius:var(--radius); border:1px solid var(--brown-100); overflow:hidden; box-shadow:var(--shadow-sm); transition:all 0.2s; }
+.reserva-card:hover { box-shadow:var(--shadow-md); transform:translateY(-2px); }
+.reserva-header { padding:16px 20px; display:flex; align-items:center; justify-content:space-between; }
+.reserva-body { padding:0 20px 16px; }
+
+.morador-card { background:white; border-radius:var(--radius); padding:20px; border:1px solid var(--brown-100); box-shadow:var(--shadow-sm); text-align:center; transition:all 0.2s; }
+.morador-card:hover { box-shadow:var(--shadow-md); transform:translateY(-2px); }
+.morador-avatar { width:60px; height:60px; border-radius:50%; margin:0 auto 12px; display:flex; align-items:center; justify-content:center; font-size:22px; font-weight:700; color:white; }
+.morador-tag { font-size:11px; padding:3px 8px; border-radius:20px; background:var(--brown-100); color:var(--brown-600); }
+
+/* MODAL */
+.modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:1000; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(4px); opacity:0; pointer-events:none; transition:opacity 0.2s; }
+.modal-overlay.open { opacity:1; pointer-events:all; }
+.modal { background:white; border-radius:20px; padding:28px; width:480px; max-width:92vw; box-shadow:var(--shadow-lg); transform:scale(0.96) translateY(10px); transition:all 0.25s; max-height:85vh; overflow-y:auto; }
+.modal-overlay.open .modal { transform:scale(1) translateY(0); }
+.modal-title { font-size:20px; font-weight:700; margin-bottom:20px; }
+.form-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.modal-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:20px; }
+select.form-input { appearance:none; cursor:pointer; }
+textarea.form-input { min-height:80px; resize:vertical; }
+
+/* LOADING */
+.loading-spinner { width:20px; height:20px; border:2px solid rgba(255,255,255,0.3); border-top-color:white; border-radius:50%; animation:spin 0.7s linear infinite; display:inline-block; }
+@keyframes spin { to{transform:rotate(360deg);} }
+
+/* TOAST */
+#toast { position:fixed; bottom:24px; right:24px; background:var(--brown-800); color:white; padding:12px 20px; border-radius:10px; font-size:14px; opacity:0; transform:translateY(10px); transition:all 0.3s; z-index:2000; pointer-events:none; max-width:300px; }
+
+/* EMPTY STATE */
+.empty-state { text-align:center; padding:40px 20px; color:var(--brown-400); }
+.empty-state .emoji { font-size:40px; margin-bottom:10px; }
+.empty-state p { font-size:14px; }
+
+/* LOADING SKELETON */
+.skeleton { background:linear-gradient(90deg, var(--brown-100) 25%, var(--brown-200) 50%, var(--brown-100) 75%); background-size:200% 100%; animation:shimmer 1.5s infinite; border-radius:8px; }
+@keyframes shimmer { 0%{background-position:200% 0;}100%{background-position:-200% 0;} }
+
+/* MOBILE */
+.mobile-toggle { display:none; position:fixed; top:16px; left:16px; z-index:200; width:40px; height:40px; border-radius:10px; background:var(--brown-800); border:none; cursor:pointer; font-size:18px; color:white; align-items:center; justify-content:center; }
+@media(max-width:768px){
+  .mobile-toggle{display:flex;}
+  .sidebar{transform:translateX(-100%);}
+  .sidebar.open{transform:translateX(0);}
+  .main{margin-left:0;padding:70px 16px 20px;}
+  .grid-4{grid-template-columns:repeat(2,1fr);}
+  .grid-3{grid-template-columns:repeat(2,1fr);}
+  .grid-2,.grid-3.reservas-grid{grid-template-columns:1fr;}
+  .form-row{grid-template-columns:1fr;}
+  .topbar{flex-direction:column;align-items:flex-start;gap:12px;}
+  .topbar-right{width:100%;flex-wrap:wrap;}
+}
+
+::-webkit-scrollbar{width:5px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--brown-200);border-radius:99px;}
+
+.badge-count { display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:50%; background:var(--terracotta); color:white; font-size:10px; font-weight:700; margin-left:6px; }
+.bg-terracotta{background:rgba(196,105,74,0.12);}
+.bg-green{background:rgba(125,175,140,0.12);}
+.bg-blue{background:rgba(106,143,175,0.12);}
+.bg-yellow{background:rgba(212,168,71,0.12);}
+
+/* delete btn small */
+.del-btn { width:24px; height:24px; border-radius:6px; border:none; background:#fee2e2; color:#c0392b; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:12px; transition:all 0.15s; flex-shrink:0; }
+.del-btn:hover { background:#fca5a5; }
+</style>
+</head>
+<body>
+
+<!-- ===== AUTH SCREEN ===== -->
+<div id="auth-screen">
+  <div class="auth-pattern"></div>
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="auth-logo-icon">🏡</div>
+      <div class="auth-logo-text">
+        <h1>CasaHub</h1>
+        <span>Gestão do Lar</span>
+      </div>
+    </div>
+
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchAuthTab('login')">Entrar</button>
+      <button class="auth-tab" onclick="switchAuthTab('register')">Criar conta</button>
+    </div>
+
+    <div id="auth-error" class="auth-error"></div>
+
+    <!-- LOGIN -->
+    <div id="tab-login">
+      <div class="form-group">
+        <label class="form-label">E-mail</label>
+        <input class="form-input" id="login-email" type="email" placeholder="seu@email.com" onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Senha</label>
+        <input class="form-input" id="login-pass" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <button class="btn btn-primary" id="btn-login" onclick="doLogin()">Entrar</button>
+      <div class="auth-divider">— ou —</div>
+      <p style="text-align:center;font-size:13px;color:var(--brown-400);">Não tem conta? <a href="#" onclick="switchAuthTab('register')" style="color:var(--terracotta);text-decoration:none;font-weight:500;">Criar agora</a></p>
+    </div>
+
+    <!-- REGISTER -->
+    <div id="tab-register" style="display:none;">
+      <div class="form-group">
+        <label class="form-label">Nome completo</label>
+        <input class="form-input" id="reg-name" type="text" placeholder="Seu nome">
+      </div>
+      <div class="form-group">
+        <label class="form-label">E-mail</label>
+        <input class="form-input" id="reg-email" type="email" placeholder="seu@email.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Senha</label>
+        <input class="form-input" id="reg-pass" type="password" placeholder="Mínimo 6 caracteres">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Nome da casa / família</label>
+        <input class="form-input" id="reg-house" type="text" placeholder="Ex: Casa da Família Andrade">
+      </div>
+      <button class="btn btn-primary" id="btn-register" onclick="doRegister()">Criar conta</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== APP SCREEN ===== -->
+<div id="app-screen">
+  <button class="mobile-toggle" onclick="toggleSidebar()">☰</button>
+  <div class="app">
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-logo">
+        <div class="sidebar-logo-icon">🏡</div>
+        <div>
+          <h1>CasaHub</h1>
+          <span id="house-name-label" style="color:var(--brown-400);font-size:10px;letter-spacing:1px;">MEU LAR</span>
+        </div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">Principal</div>
+        <div class="nav-item active" onclick="navigate('dashboard',this)"><span class="icon">📊</span> Dashboard</div>
+        <div class="nav-item" onclick="navigate('calendario',this)"><span class="icon">📅</span> Calendário</div>
+        <div class="nav-item" onclick="navigate('reservas',this)"><span class="icon">🔑</span> Reservas</div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">Gestão</div>
+        <div class="nav-item" onclick="navigate('moradores',this)"><span class="icon">👥</span> Moradores</div>
+        <div class="nav-item" onclick="navigate('tarefas',this)"><span class="icon">✅</span> Tarefas</div>
+        <div class="nav-item" onclick="navigate('limpeza',this)"><span class="icon">🧹</span> Limpeza</div>
+        <div class="nav-item" onclick="navigate('manutencao',this)"><span class="icon">🔧</span> Manutenção</div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">Recursos</div>
+        <div class="nav-item" onclick="navigate('financeiro',this)"><span class="icon">💰</span> Financeiro</div>
+        <div class="nav-item" onclick="navigate('estoque',this)"><span class="icon">📦</span> Estoque</div>
+      </div>
+      <div class="sidebar-footer">
+        <div class="user-card">
+          <div class="avatar" id="sidebar-avatar">?</div>
+          <div class="user-info">
+            <div class="name" id="sidebar-name">Carregando...</div>
+            <div class="role" id="sidebar-role">Membro</div>
+          </div>
+        </div>
+        <button class="logout-btn" onclick="doLogout()">↩ Sair da conta</button>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="main">
+
+      <!-- DASHBOARD -->
+      <div class="page active" id="page-dashboard">
+        <div class="topbar">
+          <div class="topbar-left">
+            <h2 id="dash-greeting">Olá! 🌤️</h2>
+            <div class="subtitle" id="dash-date">Carregando...</div>
+          </div>
+          <div class="topbar-right">
+            <button class="btn btn-ghost btn-sm" onclick="openModal('modal-task')">+ Tarefa</button>
+            <button class="btn btn-primary btn-sm" onclick="openModal('modal-reserva')">+ Reserva</button>
+          </div>
+        </div>
+        <div class="grid grid-4" style="margin-bottom:20px;" id="dash-stats">
+          <div class="stat-card"><div class="stat-icon bg-terracotta">👥</div><div class="skeleton" style="height:28px;width:60px;margin-bottom:8px;"></div><div class="stat-label">Moradores</div></div>
+          <div class="stat-card"><div class="stat-icon bg-blue">🔑</div><div class="skeleton" style="height:28px;width:60px;margin-bottom:8px;"></div><div class="stat-label">Reservas este mês</div></div>
+          <div class="stat-card"><div class="stat-icon bg-green">✅</div><div class="skeleton" style="height:28px;width:60px;margin-bottom:8px;"></div><div class="stat-label">Tarefas pendentes</div></div>
+          <div class="stat-card"><div class="stat-icon bg-yellow">💰</div><div class="skeleton" style="height:28px;width:100px;margin-bottom:8px;"></div><div class="stat-label">Gastos do mês</div></div>
+        </div>
+        <div class="two-col">
+          <div class="card">
+            <div class="section-header">
+              <span class="section-title">Tarefas Pendentes</span>
+              <button class="btn btn-ghost btn-sm" onclick="navigate('tarefas',null)">Ver todas</button>
+            </div>
+            <div id="dash-tasks-list"><div class="skeleton" style="height:44px;margin-bottom:6px;"></div><div class="skeleton" style="height:44px;margin-bottom:6px;"></div><div class="skeleton" style="height:44px;"></div></div>
+          </div>
+          <div class="card">
+            <div class="section-header">
+              <span class="section-title">Próximas Reservas</span>
+              <button class="btn btn-ghost btn-sm" onclick="navigate('reservas',null)">Ver todas</button>
+            </div>
+            <div id="dash-reservas-list"><div class="skeleton" style="height:56px;margin-bottom:8px;"></div><div class="skeleton" style="height:56px;"></div></div>
+          </div>
+        </div>
+        <div class="two-col" style="margin-top:16px;">
+          <div class="card">
+            <div class="section-header"><span class="section-title">Estoque Baixo ⚠️</span><button class="btn btn-ghost btn-sm" onclick="navigate('estoque',null)">Estoque</button></div>
+            <div id="dash-stock-list"><div class="skeleton" style="height:40px;margin-bottom:6px;"></div><div class="skeleton" style="height:40px;"></div></div>
+          </div>
+          <div class="card">
+            <div class="section-header"><span class="section-title">Últimas Despesas</span></div>
+            <div id="dash-fin-list"><div class="skeleton" style="height:40px;margin-bottom:6px;"></div><div class="skeleton" style="height:40px;"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CALENDÁRIO -->
+      <div class="page" id="page-calendario">
+        <div class="topbar">
+          <div class="topbar-left"><h2>Calendário</h2><div class="subtitle">Eventos, reservas e tarefas</div></div>
+          <div class="topbar-right"><button class="btn btn-primary btn-sm" onclick="openModal('modal-evento')">+ Evento</button></div>
+        </div>
+        <div class="two-col">
+          <div class="card"><div id="big-calendar"></div></div>
+          <div class="card">
+            <div class="section-title" style="margin-bottom:16px;">Eventos do Mês</div>
+            <div id="cal-events-list"><div class="empty-state"><div class="emoji">📅</div><p>Nenhum evento ainda</p></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RESERVAS -->
+      <div class="page" id="page-reservas">
+        <div class="topbar">
+          <div class="topbar-left"><h2>Reservas</h2><div class="subtitle">Controle de hóspedes e alocações</div></div>
+          <div class="topbar-right"><button class="btn btn-primary btn-sm" onclick="openModal('modal-reserva')">+ Nova Reserva</button></div>
+        </div>
+        <div class="tab-bar">
+          <button class="tab active" onclick="filterReservas('todas',this)">Todas</button>
+          <button class="tab" onclick="filterReservas('confirmado',this)">Confirmadas</button>
+          <button class="tab" onclick="filterReservas('pendente',this)">Pendentes</button>
+          <button class="tab" onclick="filterReservas('concluido',this)">Histórico</button>
+        </div>
+        <div id="reservas-grid" class="grid grid-3 reservas-grid"></div>
+      </div>
+
+      <!-- MORADORES -->
+      <div class="page" id="page-moradores">
+        <div class="topbar">
+          <div class="topbar-left"><h2>Moradores</h2><div class="subtitle">Quem vive na sua casa</div></div>
+          <div class="topbar-right"><button class="btn btn-primary btn-sm" onclick="openModal('modal-morador')">+ Morador</button></div>
+        </div>
+        <div id="moradores-grid" class="grid grid-4"></div>
+      </div>
+
+      <!-- TAREFAS -->
+      <div class="page" id="page-tarefas">
+        <div class="topbar">
+          <div class="topbar-left"><h2>Tarefas</h2><div class="subtitle">Organização e acompanhamento</div></div>
+          <div class="topbar-right"><button class="btn btn-primary btn-sm" onclick="openModal('modal-task')">+ Tarefa</button></div>
+        </div>
+        <div class="tab-bar">
+          <button class="tab active" onclick="filterTarefas('todas',this)">Todas</button>
+          <button class="tab" onclick="filterTarefas('pendente',this)">Pendentes</button>
+          <button class="tab" onclick="filterTarefas('concluida',this)">Concluídas</button>
+        </div>
+        <div id="tarefas-list"></div>
+      </div>
+
+      <!-- LIMPEZA -->
+      <div class="page" id="page-limpeza">
+        <div class="topbar">
+          <div class="topbar-left"><h2>Limpeza</h2><div class="subtitle">Controle por cômodo</div></div>
+          <div class="topbar-right"><button class="btn btn-primary btn-sm" onclick="openModal('modal-task','limpeza')">+ Tarefa de Limpeza</button></div>
+        </div>
+        <div id="limpeza-grid" class="grid grid-3"></div>
+      </div>
+
+      <!-- MANUTENÇÃO -->
+      <div class="page" id="page-manutencao">
+        <div class="topbar">
+          <div class="topbar-left"><h2>Manutenção</h2><div class="subtitle">Reparos e serviços</div></div>
+          <div class="topbar-right"><button class="btn btn-primary btn-sm" onclick="openModal('modal-manut')">+ Chamado</button></div>
+        </div>
+        <div id="manutencao-grid" class="grid grid-3"></div>
+      </div>
+
+      <!-- FINANCEIRO -->
+      <div class="page" id="page-financeiro">
+        <div class="topbar">
+          <div class="topbar-left"><h2>Financeiro</h2><div class="subtitle">Controle de despesas</div></div>
+          <div class="topbar-right"><button class="btn btn-primary btn-sm" onclick="openModal('modal-fin')">+ Lançamento</button></div>
+        </div>
+        <div class="grid grid-3" style="margin-bottom:20px;" id="fin-stats"></div>
+        <div class="two-col">
+          <div class="card">
+            <div class="section-header"><span class="section-title">Despesas</span></div>
+            <div id="despesas-list"></div>
+          </div>
+          <div class="card">
+            <div class="section-header"><span class="section-title">Receitas</span></div>
+            <div id="receitas-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ESTOQUE -->
+      <div class="page" id="page-estoque">
+        <div class="topbar">
+          <div class="topbar-left"><h2>Estoque</h2><div class="subtitle">Controle de produtos</div></div>
+          <div class="topbar-right"><button class="btn btn-primary btn-sm" onclick="openModal('modal-inv')">+ Produto</button></div>
+        </div>
+        <div id="estoque-alert" style="margin-bottom:12px;"></div>
+        <div class="two-col">
+          <div class="card">
+            <div class="section-header"><span class="section-title">🧹 Limpeza & Higiene</span></div>
+            <div id="stock-limpeza"></div>
+          </div>
+          <div class="card">
+            <div class="section-header"><span class="section-title">🍳 Outros</span></div>
+            <div id="stock-outros"></div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- ===== MODALS ===== -->
+<div class="modal-overlay" id="modal-task" onclick="closeModalOverlay(event,'modal-task')">
+  <div class="modal">
+    <div class="modal-title">➕ Nova Tarefa</div>
+    <div class="form-group"><label class="form-label">Nome da tarefa *</label><input class="form-input" id="task-nome" type="text" placeholder="Ex: Limpar calhas"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Categoria</label>
+        <select class="form-input" id="task-cat">
+          <option value="limpeza">Limpeza</option><option value="manutencao">Manutenção</option>
+          <option value="compras">Compras</option><option value="jardim">Jardim</option><option value="admin">Admin</option>
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">Cômodo</label>
+        <select class="form-input" id="task-comodo">
+          <option value="">Geral</option><option value="sala">Sala</option><option value="cozinha">Cozinha</option>
+          <option value="banheiro">Banheiro</option><option value="quarto">Quarto</option>
+          <option value="jardim">Jardim</option><option value="garagem">Garagem</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Data</label><input class="form-input" id="task-data" type="date"></div>
+      <div class="form-group"><label class="form-label">Prioridade</label>
+        <select class="form-input" id="task-prior">
+          <option value="normal">Normal</option><option value="alta">Alta</option><option value="urgente">Urgente</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group"><label class="form-label">Observação</label><textarea class="form-input" id="task-obs" placeholder="Detalhes..."></textarea></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-task')">Cancelar</button>
+      <button class="btn btn-primary" id="btn-save-task" onclick="saveTask()">Salvar Tarefa</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-reserva" onclick="closeModalOverlay(event,'modal-reserva')">
+  <div class="modal">
+    <div class="modal-title">🔑 Nova Reserva</div>
+    <div class="form-group"><label class="form-label">Nome do hóspede *</label><input class="form-input" id="res-nome" type="text"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Check-in *</label><input class="form-input" id="res-in" type="date"></div>
+      <div class="form-group"><label class="form-label">Check-out *</label><input class="form-input" id="res-out" type="date"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Nº hóspedes</label><input class="form-input" id="res-num" type="number" min="1" value="2"></div>
+      <div class="form-group"><label class="form-label">Valor (R$)</label><input class="form-input" id="res-valor" type="number" step="0.01" placeholder="0,00"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Quartos / Áreas</label>
+      <select class="form-input" id="res-quarto">
+        <option>Quarto Master</option><option>Quarto 1</option><option>Quarto 2</option><option>Casa inteira</option>
+      </select>
+    </div>
+    <div class="form-group"><label class="form-label">Contato</label><input class="form-input" id="res-contato" type="text" placeholder="Telefone ou e-mail"></div>
+    <div class="form-group"><label class="form-label">Observações</label><textarea class="form-input" id="res-obs"></textarea></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-reserva')">Cancelar</button>
+      <button class="btn btn-primary" id="btn-save-res" onclick="saveReserva()">Criar Reserva</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-morador" onclick="closeModalOverlay(event,'modal-morador')">
+  <div class="modal">
+    <div class="modal-title">👤 Novo Morador</div>
+    <div class="form-group"><label class="form-label">Nome completo *</label><input class="form-input" id="mor-nome" type="text"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Tipo</label>
+        <select class="form-input" id="mor-tipo">
+          <option value="adulto">Adulto</option><option value="crianca">Criança</option><option value="idoso">Idoso</option>
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">Perfil</label>
+        <select class="form-input" id="mor-perfil">
+          <option value="morador">Morador</option><option value="admin">Admin</option><option value="visitante">Visitante</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group"><label class="form-label">Quarto</label>
+      <select class="form-input" id="mor-quarto">
+        <option value="">Não definido</option><option>Quarto Master</option><option>Quarto 1</option><option>Quarto 2</option>
+      </select>
+    </div>
+    <div class="form-group"><label class="form-label">Responsabilidades</label><input class="form-input" id="mor-resp" type="text" placeholder="Ex: Limpeza, Compras"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-morador')">Cancelar</button>
+      <button class="btn btn-primary" id="btn-save-mor" onclick="saveMorador()">Adicionar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-manut" onclick="closeModalOverlay(event,'modal-manut')">
+  <div class="modal">
+    <div class="modal-title">🔧 Novo Chamado</div>
+    <div class="form-group"><label class="form-label">Título *</label><input class="form-input" id="man-titulo" type="text" placeholder="Ex: Torneira com vazamento"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Categoria</label>
+        <select class="form-input" id="man-cat">
+          <option>Hidráulica</option><option>Elétrica</option><option>Alvenaria</option>
+          <option>Ar-condicionado</option><option>Jardim</option><option>Piscina</option><option>Outros</option>
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">Prioridade</label>
+        <select class="form-input" id="man-prior">
+          <option value="normal">Normal</option><option value="alta">Alta</option><option value="urgente">Urgente</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group"><label class="form-label">Local</label><input class="form-input" id="man-local" type="text" placeholder="Ex: Banheiro principal"></div>
+    <div class="form-group"><label class="form-label">Descrição</label><textarea class="form-input" id="man-desc"></textarea></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-manut')">Cancelar</button>
+      <button class="btn btn-primary" id="btn-save-man" onclick="saveManutencao()">Criar Chamado</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-fin" onclick="closeModalOverlay(event,'modal-fin')">
+  <div class="modal">
+    <div class="modal-title">💰 Novo Lançamento</div>
+    <div class="form-group"><label class="form-label">Descrição *</label><input class="form-input" id="fin-desc" type="text" placeholder="Ex: Conta de energia"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Tipo</label>
+        <select class="form-input" id="fin-tipo">
+          <option value="despesa">Despesa</option><option value="receita">Receita</option>
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">Valor (R$) *</label><input class="form-input" id="fin-valor" type="number" step="0.01" placeholder="0,00"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Categoria</label>
+        <select class="form-input" id="fin-cat">
+          <option>Contas</option><option>Supermercado</option><option>Manutenção</option>
+          <option>Limpeza</option><option>Reserva</option><option>Outros</option>
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">Data</label><input class="form-input" id="fin-data" type="date"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-fin')">Cancelar</button>
+      <button class="btn btn-primary" id="btn-save-fin" onclick="saveFinanceiro()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-inv" onclick="closeModalOverlay(event,'modal-inv')">
+  <div class="modal">
+    <div class="modal-title">📦 Novo Produto</div>
+    <div class="form-group"><label class="form-label">Nome do produto *</label><input class="form-input" id="inv-nome" type="text"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Categoria</label>
+        <select class="form-input" id="inv-cat">
+          <option value="limpeza">Limpeza</option><option value="higiene">Higiene</option>
+          <option value="alimentos">Alimentos</option><option value="outros">Outros</option>
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">Quantidade</label><input class="form-input" id="inv-qty" type="number" value="1" min="0"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Quantidade mínima (alerta)</label><input class="form-input" id="inv-min" type="number" value="2" min="0"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-inv')">Cancelar</button>
+      <button class="btn btn-primary" id="btn-save-inv" onclick="saveEstoque()">Adicionar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-evento" onclick="closeModalOverlay(event,'modal-evento')">
+  <div class="modal">
+    <div class="modal-title">📅 Novo Evento</div>
+    <div class="form-group"><label class="form-label">Título *</label><input class="form-input" id="ev-titulo" type="text"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Data início</label><input class="form-input" id="ev-inicio" type="date"></div>
+      <div class="form-group"><label class="form-label">Data fim</label><input class="form-input" id="ev-fim" type="date"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Tipo</label>
+      <select class="form-input" id="ev-tipo">
+        <option value="reserva">Reserva</option><option value="limpeza">Limpeza</option>
+        <option value="manutencao">Manutenção</option><option value="aniversario">Aniversário</option>
+        <option value="social">Evento social</option><option value="outro">Outro</option>
+      </select>
+    </div>
+    <div class="form-group"><label class="form-label">Notas</label><textarea class="form-input" id="ev-notas"></textarea></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-evento')">Cancelar</button>
+      <button class="btn btn-primary" id="btn-save-ev" onclick="saveEvento()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ===== SUPABASE INIT =====
+const SUPA_URL = 'https://ycxhnmtwgpblcleloueh.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InljeGhubXR3Z3BibGNsZWxvdWVoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTI5MjcsImV4cCI6MjA5MDUyODkyN30.ozrwMA5_rlL9JcgU_092_nh4MgExDvtHWpV3zxXPSmE';
+const { createClient } = supabase;
+const db = createClient(SUPA_URL, SUPA_KEY);
+
+let currentUser = null;
+let currentHouseId = null;
+let currentUserProfile = null;
+let allReservas = [], allTarefas = [], allManutencao = [], allEstoque = [], allFinanceiro = [], allEventos = [];
+
+// ===== AUTH =====
+function switchAuthTab(tab) {
+  document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.auth-tab')[tab === 'login' ? 0 : 1].classList.add('active');
+  document.getElementById('tab-login').style.display = tab === 'login' ? '' : 'none';
+  document.getElementById('tab-register').style.display = tab === 'register' ? '' : 'none';
+  document.getElementById('auth-error').style.display = 'none';
+}
+
+function showAuthError(msg) {
+  const el = document.getElementById('auth-error');
+  el.textContent = msg; el.style.display = 'block';
+}
+
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const pass = document.getElementById('login-pass').value;
+  if (!email || !pass) { showAuthError('Preencha e-mail e senha.'); return; }
+  const btn = document.getElementById('btn-login');
+  btn.innerHTML = '<span class="loading-spinner"></span> Entrando...'; btn.disabled = true;
+  const { data, error } = await db.auth.signInWithPassword({ email, password: pass });
+  if (error) { showAuthError('E-mail ou senha incorretos.'); btn.innerHTML = 'Entrar'; btn.disabled = false; return; }
+  await loadApp(data.user);
+}
+
+async function doRegister() {
+  const name = document.getElementById('reg-name').value.trim();
+  const email = document.getElementById('reg-email').value.trim();
+  const pass = document.getElementById('reg-pass').value;
+  const house = document.getElementById('reg-house').value.trim();
+  if (!name || !email || !pass || !house) { showAuthError('Preencha todos os campos.'); return; }
+  if (pass.length < 6) { showAuthError('Senha deve ter ao menos 6 caracteres.'); return; }
+  const btn = document.getElementById('btn-register');
+  btn.innerHTML = '<span class="loading-spinner"></span> Criando conta...'; btn.disabled = true;
+  const { data, error } = await db.auth.signUp({ email, password: pass, options: { data: { full_name: name, house_name: house } } });
+  if (error) { showAuthError(error.message); btn.innerHTML = 'Criar conta'; btn.disabled = false; return; }
+  // Create house
+  const { data: houseData } = await db.from('houses').insert({ name: house, owner_id: data.user.id }).select().single();
+  if (houseData) {
+    await db.from('profiles').upsert({ id: data.user.id, full_name: name, house_id: houseData.id, role: 'admin' });
+  }
+  showToast('✅ Conta criada! Bem-vindo ao CasaHub!');
+  await loadApp(data.user);
+}
+
+async function doLogout() {
+  await db.auth.signOut();
+  currentUser = null; currentHouseId = null;
+  document.getElementById('app-screen').style.display = 'none';
+  document.getElementById('auth-screen').style.display = 'flex';
+  document.getElementById('login-email').value = '';
+  document.getElementById('login-pass').value = '';
+}
+
+// ===== LOAD APP =====
+async function loadApp(user) {
+  currentUser = user;
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('app-screen').style.display = 'block';
+  // Load profile
+  let { data: profile } = await db.from('profiles').select('*').eq('id', user.id).single();
+  if (!profile) {
+    const meta = user.user_metadata || {};
+    await db.from('profiles').upsert({ id: user.id, full_name: meta.full_name || user.email, role: 'membro' });
+    profile = { full_name: meta.full_name || user.email, role: 'membro', house_id: null };
+  }
+  currentUserProfile = profile;
+  // If no house, try to find one
+  if (!profile.house_id) {
+    const { data: house } = await db.from('houses').select('id').eq('owner_id', user.id).single();
+    if (house) {
+      currentHouseId = house.id;
+      await db.from('profiles').update({ house_id: house.id }).eq('id', user.id);
+    }
+  } else {
+    currentHouseId = profile.house_id;
+  }
+  // Update UI
+  const name = profile.full_name || user.email;
+  document.getElementById('sidebar-name').textContent = name;
+  document.getElementById('sidebar-role').textContent = profile.role || 'Membro';
+  document.getElementById('sidebar-avatar').textContent = name[0].toUpperCase();
+  const now = new Date();
+  const hour = now.getHours();
+  const greet = hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite';
+  document.getElementById('dash-greeting').textContent = `${greet}, ${name.split(' ')[0]}! 🌤️`;
+  const days = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+  const months = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  document.getElementById('dash-date').textContent = `${days[now.getDay()]}, ${now.getDate()} de ${months[now.getMonth()]}`;
+  // Load house name
+  if (currentHouseId) {
+    const { data: houseInfo } = await db.from('houses').select('name').eq('id', currentHouseId).single();
+    if (houseInfo) document.getElementById('house-name-label').textContent = houseInfo.name.toUpperCase();
+  }
+  await loadAllData();
+}
+
+async function loadAllData() {
+  if (!currentHouseId) { renderDashboardEmpty(); return; }
+  await Promise.all([loadTarefas(), loadReservas(), loadManutencao(), loadEstoque(), loadFinanceiro(), loadEventos(), loadMoradores()]);
+  renderDashboard();
+  renderCalendar('big-calendar');
+}
+
+// ===== DATA LOADERS =====
+async function loadTarefas() {
+  const { data } = await db.from('tarefas').select('*').eq('house_id', currentHouseId).order('created_at', { ascending: false });
+  allTarefas = data || [];
+  renderTarefas();
+  renderLimpeza();
+}
+async function loadReservas() {
+  const { data } = await db.from('reservas').select('*').eq('house_id', currentHouseId).order('checkin', { ascending: true });
+  allReservas = data || [];
+  renderReservas('todas');
+}
+async function loadManutencao() {
+  const { data } = await db.from('manutencao').select('*').eq('house_id', currentHouseId).order('created_at', { ascending: false });
+  allManutencao = data || [];
+  renderManutencao();
+}
+async function loadEstoque() {
+  const { data } = await db.from('estoque').select('*').eq('house_id', currentHouseId).order('nome');
+  allEstoque = data || [];
+  renderEstoque();
+}
+async function loadFinanceiro() {
+  const { data } = await db.from('financeiro').select('*').eq('house_id', currentHouseId).order('data', { ascending: false });
+  allFinanceiro = data || [];
+  renderFinanceiro();
+}
+async function loadEventos() {
+  const { data } = await db.from('eventos').select('*').eq('house_id', currentHouseId).order('data_inicio');
+  allEventos = data || [];
+  renderCalEventos();
+}
+async function loadMoradores() {
+  const { data } = await db.from('moradores').select('*').eq('house_id', currentHouseId).order('nome');
+  renderMoradores(data || []);
+}
+
+// ===== DASHBOARD =====
+function renderDashboard() {
+  const pendentes = allTarefas.filter(t => t.status !== 'concluida').length;
+  const now = new Date();
+  const mesAtual = now.getMonth() + 1;
+  const anoAtual = now.getFullYear();
+  const reservasMes = allReservas.filter(r => {
+    const d = new Date(r.checkin);
+    return d.getMonth() + 1 === mesAtual && d.getFullYear() === anoAtual;
+  }).length;
+  const despesasMes = allFinanceiro.filter(f => {
+    const d = new Date(f.data);
+    return f.tipo === 'despesa' && d.getMonth() + 1 === mesAtual && d.getFullYear() === anoAtual;
+  }).reduce((s, f) => s + parseFloat(f.valor || 0), 0);
+  document.getElementById('dash-stats').innerHTML = `
+    <div class="stat-card"><div class="stat-icon bg-terracotta">👥</div><div class="stat-value" id="dash-moradores-count">-</div><div class="stat-label">Moradores</div></div>
+    <div class="stat-card"><div class="stat-icon bg-blue">🔑</div><div class="stat-value">${reservasMes}</div><div class="stat-label">Reservas este mês</div></div>
+    <div class="stat-card"><div class="stat-icon bg-green">✅</div><div class="stat-value">${pendentes}</div><div class="stat-label">Tarefas pendentes</div></div>
+    <div class="stat-card"><div class="stat-icon bg-yellow">💰</div><div class="stat-value" style="font-size:20px;">R$${despesasMes.toFixed(0)}</div><div class="stat-label">Gastos do mês</div></div>`;
+  // Update moradores count async
+  db.from('moradores').select('id', { count: 'exact' }).eq('house_id', currentHouseId).then(({ count }) => {
+    const el = document.getElementById('dash-moradores-count'); if (el) el.textContent = count || 0;
+  });
+  // Tasks
+  const pendTasks = allTarefas.filter(t => t.status !== 'concluida').slice(0, 5);
+  const tl = document.getElementById('dash-tasks-list');
+  if (!pendTasks.length) { tl.innerHTML = '<div class="empty-state"><div class="emoji">✅</div><p>Nenhuma tarefa pendente!</p></div>'; }
+  else tl.innerHTML = pendTasks.map(t => taskItemHTML(t)).join('');
+  // Reservas
+  const nextRes = allReservas.filter(r => r.status !== 'concluido').slice(0, 3);
+  const rl = document.getElementById('dash-reservas-list');
+  if (!nextRes.length) { rl.innerHTML = '<div class="empty-state"><div class="emoji">🔑</div><p>Nenhuma reserva próxima</p></div>'; }
+  else rl.innerHTML = nextRes.map(r => `
+    <div class="fin-item" style="margin-bottom:8px;">
+      <div class="fin-left"><div class="fin-icon" style="background:#EEF4FB;">🔑</div>
+      <div><div class="fin-name">${r.hospede}</div><div class="fin-date">📅 ${fmtDate(r.checkin)} → ${fmtDate(r.checkout)}</div></div></div>
+      <span class="status-badge status-${r.status}">${r.status}</span>
+    </div>`).join('');
+  // Stock baixo
+  const lowStock = allEstoque.filter(e => e.quantidade <= e.quantidade_minima).slice(0, 4);
+  const sl = document.getElementById('dash-stock-list');
+  if (!lowStock.length) { sl.innerHTML = '<div class="empty-state"><div class="emoji">📦</div><p>Estoque em dia!</p></div>'; }
+  else sl.innerHTML = lowStock.map(e => `
+    <div class="inv-item"><div><div class="inv-name">${e.nome}</div><div class="fin-date">${e.categoria}</div></div>
+    <span style="font-size:13px;font-weight:600;color:var(--terracotta);">${e.quantidade} restante(s)</span></div>`).join('');
+  // Fin
+  const lastFin = allFinanceiro.slice(0, 5);
+  const fl = document.getElementById('dash-fin-list');
+  if (!lastFin.length) { fl.innerHTML = '<div class="empty-state"><div class="emoji">💰</div><p>Nenhum lançamento</p></div>'; }
+  else fl.innerHTML = lastFin.map(f => `
+    <div class="fin-item"><div class="fin-left">
+      <div class="fin-icon" style="background:${f.tipo==='receita'?'#E8F5F0':'#FEF3E8'};">${f.tipo==='receita'?'💵':'💸'}</div>
+      <div><div class="fin-name">${f.descricao}</div><div class="fin-date">${fmtDate(f.data)}</div></div></div>
+      <div class="fin-amount ${f.tipo==='receita'?'fin-income':'fin-expense'}">${f.tipo==='receita'?'+':'-'} R$${parseFloat(f.valor).toFixed(2)}</div>
+    </div>`).join('');
+}
+function renderDashboardEmpty() {
+  document.getElementById('dash-stats').innerHTML = `
+    <div class="stat-card"><div class="stat-icon bg-terracotta">👥</div><div class="stat-value">0</div><div class="stat-label">Moradores</div></div>
+    <div class="stat-card"><div class="stat-icon bg-blue">🔑</div><div class="stat-value">0</div><div class="stat-label">Reservas</div></div>
+    <div class="stat-card"><div class="stat-icon bg-green">✅</div><div class="stat-value">0</div><div class="stat-label">Tarefas</div></div>
+    <div class="stat-card"><div class="stat-icon bg-yellow">💰</div><div class="stat-value">R$0</div><div class="stat-label">Gastos</div></div>`;
+}
+
+// ===== RENDERS =====
+function taskItemHTML(t) {
+  const tagMap = { limpeza:'tag-limpeza', manutencao:'tag-manutencao', compras:'tag-compras', jardim:'tag-jardim', admin:'tag-admin' };
+  const done = t.status === 'concluida';
+  const checkCls = done ? 'task-check done' : 'task-check';
+  const textCls  = done ? 'task-text done-text' : 'task-text';
+  const checkMark = done ? '&#10003;' : '';
+  const tag = tagMap[t.categoria] || 'tag-admin';
+  const cat = t.categoria || 'Geral';
+  return '<div class="task-item" onclick="toggleTaskDB(\''+t.id+'\',this)">'
+    + '<div class="'+checkCls+'">'+checkMark+'</div>'
+    + '<div class="'+textCls+'">'+t.nome+'</div>'
+    + '<span class="task-tag '+tag+'">'+cat+'</span>'
+    + '<button class="del-btn" onclick="event.stopPropagation();deleteRecord(\'tarefas\',\''+t.id+'\',loadTarefas)">&#x1F5D1;</button>'
+    + '</div>';
+}
+
+function renderTarefas(filter='todas') {
+  let list = allTarefas;
+  if (filter === 'pendente') list = list.filter(t => t.status !== 'concluida');
+  if (filter === 'concluida') list = list.filter(t => t.status === 'concluida');
+  const el = document.getElementById('tarefas-list');
+  if (!el) return;
+  if (!list.length) { el.innerHTML = '<div class="card"><div class="empty-state"><div class="emoji">✅</div><p>Nenhuma tarefa</p></div></div>'; return; }
+  el.innerHTML = '<div class="card">' + list.map(t => taskItemHTML(t)).join('') + '</div>';
+}
+
+function renderLimpeza() {
+  const comodos = ['sala','cozinha','banheiro','quarto','jardim','garagem'];
+  const icons = {sala:'🛋️',cozinha:'🍳',banheiro:'🛁',quarto:'🛏️',jardim:'🌿',garagem:'🚗'};
+  const el = document.getElementById('limpeza-grid');
+  if (!el) return;
+  el.innerHTML = comodos.map(c => {
+    const tasks = allTarefas.filter(t => t.categoria === 'limpeza' && t.comodo === c);
+    const done = tasks.filter(t => t.status === 'concluida').length;
+    const pct = tasks.length ? Math.round(done/tasks.length*100) : 100;
+    return `<div class="room-card">
+      <div style="font-size:32px;margin-bottom:8px;">${icons[c]}</div>
+      <div class="room-name" style="font-size:15px;font-weight:600;margin-bottom:6px;">${c.charAt(0).toUpperCase()+c.slice(1)}</div>
+      <div class="room-tasks" style="font-size:12px;color:var(--brown-400);margin-bottom:8px;">${tasks.length-done} pendente(s) de ${tasks.length}</div>
+      <div class="progress-bar" style="margin-bottom:10px;"><div class="progress-fill" style="width:${pct}%;background:var(--${pct===100?'green-muted':'terracotta'});"></div></div>
+      ${tasks.map(t => taskItemHTML(t)).join('')}
+      ${!tasks.length?`<div style="font-size:13px;color:var(--brown-400);text-align:center;padding:8px;">Sem tarefas</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function renderReservas(filter='todas') {
+  let list = allReservas;
+  if (filter !== 'todas') list = list.filter(r => r.status === filter);
+  const el = document.getElementById('reservas-grid');
+  if (!el) return;
+  if (!list.length) { el.innerHTML = '<div class="card" style="grid-column:1/-1;"><div class="empty-state"><div class="emoji">🔑</div><p>Nenhuma reserva encontrada</p></div></div>'; return; }
+  el.innerHTML = list.map(r => `
+    <div class="reserva-card">
+      <div class="reserva-header">
+        <div><div style="font-weight:600;font-size:15px;">${r.hospede}</div>
+        <div style="font-size:12px;color:var(--brown-400);">📅 ${fmtDate(r.checkin)} – ${fmtDate(r.checkout)}</div></div>
+        <span class="status-badge status-${r.status}">${r.status}</span>
+      </div>
+      <div class="reserva-body">
+        <div style="font-size:13px;color:var(--brown-600);margin-bottom:8px;">👥 ${r.num_hospedes} hóspede(s) · 🛏 ${r.quarto||'-'}</div>
+        ${r.valor?`<div style="font-size:13px;color:var(--green-muted);margin-bottom:8px;">💰 R$${parseFloat(r.valor).toFixed(2)}</div>`:''}
+        ${r.contato?`<div style="font-size:12px;color:var(--brown-400);margin-bottom:8px;">📞 ${r.contato}</div>`:''}
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          ${r.status==='pendente'?`<button class="btn btn-primary btn-sm" onclick="updateReservaStatus('${r.id}','confirmado')">Confirmar</button>`:''}
+          ${r.status!=='concluido'?`<button class="btn btn-ghost btn-sm" onclick="updateReservaStatus('${r.id}','concluido')">Concluir</button>`:''}
+          <button class="btn btn-danger btn-sm" onclick="deleteRecord('reservas','${r.id}',loadReservas)">🗑</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+async function updateReservaStatus(id, status) {
+  await db.from('reservas').update({ status }).eq('id', id);
+  await loadReservas();
+  renderDashboard();
+  showToast('✅ Status atualizado!');
+}
+
+function renderManutencao() {
+  const el = document.getElementById('manutencao-grid');
+  if (!el) return;
+  if (!allManutencao.length) { el.innerHTML = '<div class="card" style="grid-column:1/-1;"><div class="empty-state"><div class="emoji">🔧</div><p>Nenhum chamado aberto</p></div></div>'; return; }
+  const priorColor = { normal:'status-confirmado', alta:'status-pendente', urgente:'status-urgente' };
+  el.innerHTML = allManutencao.map(m => `
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+        <div><div style="font-weight:600;font-size:15px;">🔧 ${m.titulo}</div>
+        <div style="font-size:12px;color:var(--brown-400);">${m.categoria} ${m.local?'· '+m.local:''}</div></div>
+        <span class="status-badge ${priorColor[m.prioridade]||'status-confirmado'}">${m.prioridade}</span>
+      </div>
+      ${m.descricao?`<div style="font-size:13px;color:var(--brown-600);margin-bottom:10px;">${m.descricao}</div>`:''}
+      <div style="display:flex;gap:6px;">
+        ${m.status!=='concluido'?`<button class="btn btn-ghost btn-sm" onclick="concluirManut('${m.id}')">Concluir</button>`:'<span class="status-badge status-concluido">Concluído</span>'}
+        <button class="btn btn-danger btn-sm" onclick="deleteRecord('manutencao','${m.id}',loadManutencao)">🗑</button>
+      </div>
+    </div>`).join('');
+}
+
+async function concluirManut(id) {
+  await db.from('manutencao').update({ status: 'concluido' }).eq('id', id);
+  await loadManutencao();
+  showToast('✅ Manutenção concluída!');
+}
+
+function renderFinanceiro() {
+  const now = new Date();
+  const mes = now.getMonth() + 1, ano = now.getFullYear();
+  const despesas = allFinanceiro.filter(f => f.tipo === 'despesa');
+  const receitas = allFinanceiro.filter(f => f.tipo === 'receita');
+  const totDesp = despesas.reduce((s,f)=>s+parseFloat(f.valor||0),0);
+  const totRec = receitas.reduce((s,f)=>s+parseFloat(f.valor||0),0);
+  const el = document.getElementById('fin-stats');
+  if (el) el.innerHTML = `
+    <div class="stat-card"><div class="stat-icon bg-green">💵</div><div class="stat-value" style="color:var(--green-muted);font-size:20px;">R$${totRec.toFixed(2)}</div><div class="stat-label">Total receitas</div></div>
+    <div class="stat-card"><div class="stat-icon bg-terracotta">💸</div><div class="stat-value" style="color:var(--terracotta);font-size:20px;">R$${totDesp.toFixed(2)}</div><div class="stat-label">Total despesas</div></div>
+    <div class="stat-card"><div class="stat-icon bg-yellow">🏦</div><div class="stat-value" style="font-size:20px;color:${totRec-totDesp>=0?'var(--green-muted)':'var(--terracotta)'};">R$${(totRec-totDesp).toFixed(2)}</div><div class="stat-label">Saldo líquido</div></div>`;
+  const finIcon = {Contas:'⚡',Supermercado:'🛒',Manutenção:'🔧',Limpeza:'🧹',Reserva:'🔑',Outros:'💼'};
+  const dl = document.getElementById('despesas-list');
+  if (dl) dl.innerHTML = despesas.length ? despesas.map(f=>`
+    <div class="fin-item"><div class="fin-left">
+      <div class="fin-icon" style="background:#FEF3E8;">${finIcon[f.categoria]||'💸'}</div>
+      <div><div class="fin-name">${f.descricao}</div><div class="fin-date">${fmtDate(f.data)}</div></div></div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="fin-amount fin-expense">- R$${parseFloat(f.valor).toFixed(2)}</div>
+        <button class="del-btn" onclick="deleteRecord('financeiro','${f.id}',loadFinanceiro)">🗑</button>
+      </div></div>`).join('') : '<div class="empty-state"><div class="emoji">💸</div><p>Sem despesas</p></div>';
+  const rl = document.getElementById('receitas-list');
+  if (rl) rl.innerHTML = receitas.length ? receitas.map(f=>`
+    <div class="fin-item"><div class="fin-left">
+      <div class="fin-icon" style="background:#E8F5F0;">${finIcon[f.categoria]||'💵'}</div>
+      <div><div class="fin-name">${f.descricao}</div><div class="fin-date">${fmtDate(f.data)}</div></div></div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="fin-amount fin-income">+ R$${parseFloat(f.valor).toFixed(2)}</div>
+        <button class="del-btn" onclick="deleteRecord('financeiro','${f.id}',loadFinanceiro)">🗑</button>
+      </div></div>`).join('') : '<div class="empty-state"><div class="emoji">💵</div><p>Sem receitas</p></div>';
+}
+
+function renderEstoque() {
+  const baixo = allEstoque.filter(e => e.quantidade <= e.quantidade_minima);
+  const alertEl = document.getElementById('estoque-alert');
+  if (alertEl) alertEl.innerHTML = baixo.length ? `<div class="alert alert-warn">⚠️ ${baixo.length} item(s) com estoque baixo.</div>` : '';
+  const limpCats = ['limpeza','higiene'];
+  const limpItems = allEstoque.filter(e => limpCats.includes(e.categoria));
+  const outrosItems = allEstoque.filter(e => !limpCats.includes(e.categoria));
+  const makeInvHTML = (items) => items.length ? items.map(e => `
+    <div class="inv-item">
+      <div><div class="inv-name">${e.nome}</div><div class="fin-date">${e.categoria}</div></div>
+      <div class="inv-qty">
+        <button class="qty-btn" onclick="updateQty('${e.id}',${e.quantidade-1})">−</button>
+        <span class="qty-num ${e.quantidade<=e.quantidade_minima?'low-stock':''}">${e.quantidade}</span>
+        <button class="qty-btn" onclick="updateQty('${e.id}',${e.quantidade+1})">+</button>
+        <button class="del-btn" onclick="deleteRecord('estoque','${e.id}',loadEstoque)">🗑</button>
+      </div>
+    </div>`).join('') : '<div class="empty-state"><div class="emoji">📦</div><p>Sem itens</p></div>';
+  const sl = document.getElementById('stock-limpeza'); if(sl) sl.innerHTML = makeInvHTML(limpItems);
+  const so = document.getElementById('stock-outros'); if(so) so.innerHTML = makeInvHTML(outrosItems);
+}
+
+async function updateQty(id, qty) {
+  if (qty < 0) qty = 0;
+  await db.from('estoque').update({ quantidade: qty }).eq('id', id);
+  await loadEstoque();
+}
+
+function renderMoradores(moradores) {
+  const el = document.getElementById('moradores-grid');
+  if (!el) return;
+  const colors = ['var(--terracotta)','var(--blue-soft)','var(--green-soft)','var(--yellow-warm)','#9575CD','#FF8A65'];
+  if (!moradores.length) { el.innerHTML = '<div class="card" style="grid-column:1/-1;"><div class="empty-state"><div class="emoji">👥</div><p>Nenhum morador cadastrado ainda</p></div></div>'; return; }
+  el.innerHTML = moradores.map((m,i) => `
+    <div class="morador-card">
+      <div class="morador-avatar" style="background:${colors[i%colors.length]};">${m.nome[0].toUpperCase()}</div>
+      <div class="morador-name" style="font-size:15px;font-weight:600;margin-bottom:4px;">${m.nome}</div>
+      <div class="morador-role" style="font-size:12px;color:var(--brown-400);margin-bottom:8px;">${m.tipo||'Morador'} · ${m.perfil||'Membro'}</div>
+      ${m.quarto?`<div style="font-size:12px;color:var(--brown-600);margin-bottom:8px;">🛏 ${m.quarto}</div>`:''}
+      ${m.responsabilidades?`<div style="font-size:12px;color:var(--brown-400);">📋 ${m.responsabilidades}</div>`:''}
+      <button class="del-btn" style="margin:10px auto 0;" onclick="deleteRecord('moradores','${m.id}',()=>loadMoradores())">🗑</button>
+    </div>`).join('');
+}
+
+function renderCalEventos() {
+  const el = document.getElementById('cal-events-list');
+  if (!el) return;
+  if (!allEventos.length) { el.innerHTML = '<div class="empty-state"><div class="emoji">📅</div><p>Nenhum evento cadastrado</p></div>'; return; }
+  const icons = {reserva:'🔑',limpeza:'🧹',manutencao:'🔧',aniversario:'🎉',social:'🎊',outro:'📌'};
+  const colors = {reserva:'#EEF4FB',limpeza:'#E8F5F0',manutencao:'#FEF3E8',aniversario:'#FFF3E0',social:'#F3E5F5',outro:'#F5F5F5'};
+  el.innerHTML = allEventos.map(e => `
+    <div class="timeline-item">
+      <div class="tl-dot" style="background:${colors[e.tipo]||'#EEF4FB'};">${icons[e.tipo]||'📌'}</div>
+      <div class="tl-body">
+        <div class="tl-title">${e.titulo}</div>
+        <div class="tl-time">${fmtDate(e.data_inicio)}${e.data_fim&&e.data_fim!==e.data_inicio?' → '+fmtDate(e.data_fim):''}</div>
+        ${e.notas?`<div class="tl-desc">${e.notas}</div>`:''}
+      </div>
+      <button class="del-btn" onclick="deleteRecord('eventos','${e.id}',loadEventos)">🗑</button>
+    </div>`).join('');
+}
+
+// ===== CALENDAR =====
+let calMonth = new Date().getMonth();
+let calYear = new Date().getFullYear();
+function renderCalendar(containerId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const monthNames = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const firstDay = new Date(calYear, calMonth, 1).getDay();
+  const daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
+  const today = new Date();
+  // Collect event days
+  const reservaDays = new Set(), cleanDays = new Set(), eventDays = new Set();
+  allReservas.forEach(r => {
+    let d = new Date(r.checkin); const end = new Date(r.checkout);
+    while (d <= end) { if (d.getFullYear()===calYear&&d.getMonth()===calMonth) reservaDays.add(d.getDate()); d.setDate(d.getDate()+1); }
+  });
+  allTarefas.filter(t=>t.categoria==='limpeza'&&t.data).forEach(t=>{ const d=new Date(t.data); if(d.getFullYear()===calYear&&d.getMonth()===calMonth) cleanDays.add(d.getDate()); });
+  allEventos.forEach(e=>{ const d=new Date(e.data_inicio); if(d.getFullYear()===calYear&&d.getMonth()===calMonth) eventDays.add(d.getDate()); });
+  let html = `<div class="cal-nav">
+    <button class="cal-btn" onclick="calNav(-1)">‹</button>
+    <h3>${monthNames[calMonth]} ${calYear}</h3>
+    <button class="cal-btn" onclick="calNav(1)">›</button>
+  </div>
+  <div class="calendar-grid">
+    ${['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].map(d=>`<div class="cal-header">${d}</div>`).join('')}`;
+  let day = 1;
+  for (let i = 0; i < 42; i++) {
+    if (i < firstDay || day > daysInMonth) {
+      html += `<div class="cal-day other-month"></div>`;
+      if (i >= firstDay) day++;
+    } else {
+      const isToday = today.getDate()===day&&today.getMonth()===calMonth&&today.getFullYear()===calYear;
+      let cls = 'cal-day';
+      if (isToday) cls += ' today';
+      else if (reservaDays.has(day)) cls += ' reserved';
+      else if (cleanDays.has(day)) cls += ' cleaning';
+      if (eventDays.has(day)) cls += ' event';
+      html += `<div class="${cls}">${day}</div>`; day++;
+    }
+  }
+  html += '</div>';
+  html += `<div style="margin-top:14px;display:flex;gap:14px;flex-wrap:wrap;">
+    <div style="display:flex;align-items:center;gap:6px;font-size:11px;"><span style="width:10px;height:10px;border-radius:50%;background:var(--terracotta);display:inline-block;"></span>Hoje</div>
+    <div style="display:flex;align-items:center;gap:6px;font-size:11px;"><span style="width:10px;height:10px;border-radius:50%;background:rgba(100,143,175,0.4);display:inline-block;"></span>Reserva</div>
+    <div style="display:flex;align-items:center;gap:6px;font-size:11px;"><span style="width:10px;height:10px;border-radius:50%;background:rgba(125,175,140,0.4);display:inline-block;"></span>Limpeza</div>
+  </div>`;
+  container.innerHTML = html;
+}
+function calNav(delta) {
+  calMonth += delta;
+  if (calMonth > 11) { calMonth = 0; calYear++; }
+  if (calMonth < 0) { calMonth = 11; calYear--; }
+  renderCalendar('big-calendar');
+}
+
+// ===== SAVERS =====
+async function saveTask() {
+  const nome = document.getElementById('task-nome').value.trim();
+  if (!nome) { showToast('⚠️ Informe o nome da tarefa'); return; }
+  setBtnLoading('btn-save-task', true);
+  const { error } = await db.from('tarefas').insert({
+    house_id: currentHouseId, nome,
+    categoria: document.getElementById('task-cat').value,
+    comodo: document.getElementById('task-comodo').value || null,
+    data: document.getElementById('task-data').value || null,
+    prioridade: document.getElementById('task-prior').value,
+    observacao: document.getElementById('task-obs').value || null,
+    status: 'pendente', criado_por: currentUser.id
+  });
+  setBtnLoading('btn-save-task', false);
+  if (error) { showToast('❌ Erro ao salvar'); return; }
+  closeModal('modal-task'); clearForm(['task-nome','task-obs','task-data']); showToast('✅ Tarefa criada!');
+  await loadTarefas(); renderDashboard();
+}
+
+async function toggleTaskDB(id, el) {
+  const check = el.querySelector('.task-check');
+  const text = el.querySelector('.task-text');
+  const isDone = check.classList.contains('done');
+  const newStatus = isDone ? 'pendente' : 'concluida';
+  await db.from('tarefas').update({ status: newStatus }).eq('id', id);
+  if (isDone) { check.classList.remove('done'); check.textContent=''; text.classList.remove('done-text'); }
+  else { check.classList.add('done'); check.textContent='✓'; text.classList.add('done-text'); }
+  await loadTarefas(); renderDashboard();
+}
+
+async function saveReserva() {
+  const hospede = document.getElementById('res-nome').value.trim();
+  const checkin = document.getElementById('res-in').value;
+  const checkout = document.getElementById('res-out').value;
+  if (!hospede || !checkin || !checkout) { showToast('⚠️ Preencha os campos obrigatórios'); return; }
+  setBtnLoading('btn-save-res', true);
+  const { error } = await db.from('reservas').insert({
+    house_id: currentHouseId, hospede, checkin, checkout,
+    num_hospedes: parseInt(document.getElementById('res-num').value)||1,
+    valor: parseFloat(document.getElementById('res-valor').value)||null,
+    quarto: document.getElementById('res-quarto').value,
+    contato: document.getElementById('res-contato').value||null,
+    observacao: document.getElementById('res-obs').value||null,
+    status: 'pendente', criado_por: currentUser.id
+  });
+  setBtnLoading('btn-save-res', false);
+  if (error) { showToast('❌ Erro ao salvar'); return; }
+  closeModal('modal-reserva'); clearForm(['res-nome','res-in','res-out','res-valor','res-contato','res-obs']);
+  showToast('✅ Reserva criada!'); await loadReservas(); renderDashboard(); renderCalendar('big-calendar');
+}
+
+async function saveMorador() {
+  const nome = document.getElementById('mor-nome').value.trim();
+  if (!nome) { showToast('⚠️ Informe o nome'); return; }
+  setBtnLoading('btn-save-mor', true);
+  const { error } = await db.from('moradores').insert({
+    house_id: currentHouseId, nome,
+    tipo: document.getElementById('mor-tipo').value,
+    perfil: document.getElementById('mor-perfil').value,
+    quarto: document.getElementById('mor-quarto').value||null,
+    responsabilidades: document.getElementById('mor-resp').value||null
+  });
+  setBtnLoading('btn-save-mor', false);
+  if (error) { showToast('❌ Erro ao salvar'); return; }
+  closeModal('modal-morador'); clearForm(['mor-nome','mor-resp']); showToast('✅ Morador adicionado!');
+  await loadMoradores(); renderDashboard();
+}
+
+async function saveManutencao() {
+  const titulo = document.getElementById('man-titulo').value.trim();
+  if (!titulo) { showToast('⚠️ Informe o título'); return; }
+  setBtnLoading('btn-save-man', true);
+  const { error } = await db.from('manutencao').insert({
+    house_id: currentHouseId, titulo,
+    categoria: document.getElementById('man-cat').value,
+    prioridade: document.getElementById('man-prior').value,
+    local: document.getElementById('man-local').value||null,
+    descricao: document.getElementById('man-desc').value||null,
+    status: 'aberto', criado_por: currentUser.id
+  });
+  setBtnLoading('btn-save-man', false);
+  if (error) { showToast('❌ Erro ao salvar'); return; }
+  closeModal('modal-manut'); clearForm(['man-titulo','man-local','man-desc']); showToast('✅ Chamado criado!');
+  await loadManutencao();
+}
+
+async function saveFinanceiro() {
+  const descricao = document.getElementById('fin-desc').value.trim();
+  const valor = parseFloat(document.getElementById('fin-valor').value);
+  if (!descricao || !valor) { showToast('⚠️ Preencha descrição e valor'); return; }
+  setBtnLoading('btn-save-fin', true);
+  const { error } = await db.from('financeiro').insert({
+    house_id: currentHouseId, descricao, valor,
+    tipo: document.getElementById('fin-tipo').value,
+    categoria: document.getElementById('fin-cat').value,
+    data: document.getElementById('fin-data').value || new Date().toISOString().split('T')[0],
+    criado_por: currentUser.id
+  });
+  setBtnLoading('btn-save-fin', false);
+  if (error) { showToast('❌ Erro ao salvar'); return; }
+  closeModal('modal-fin'); clearForm(['fin-desc','fin-valor','fin-data']); showToast('✅ Lançamento salvo!');
+  await loadFinanceiro(); renderDashboard();
+}
+
+async function saveEstoque() {
+  const nome = document.getElementById('inv-nome').value.trim();
+  if (!nome) { showToast('⚠️ Informe o nome do produto'); return; }
+  setBtnLoading('btn-save-inv', true);
+  const { error } = await db.from('estoque').insert({
+    house_id: currentHouseId, nome,
+    categoria: document.getElementById('inv-cat').value,
+    quantidade: parseInt(document.getElementById('inv-qty').value)||0,
+    quantidade_minima: parseInt(document.getElementById('inv-min').value)||2
+  });
+  setBtnLoading('btn-save-inv', false);
+  if (error) { showToast('❌ Erro ao salvar'); return; }
+  closeModal('modal-inv'); clearForm(['inv-nome']); showToast('✅ Produto adicionado!');
+  await loadEstoque(); renderDashboard();
+}
+
+async function saveEvento() {
+  const titulo = document.getElementById('ev-titulo').value.trim();
+  if (!titulo) { showToast('⚠️ Informe o título'); return; }
+  setBtnLoading('btn-save-ev', true);
+  const { error } = await db.from('eventos').insert({
+    house_id: currentHouseId, titulo,
+    data_inicio: document.getElementById('ev-inicio').value || new Date().toISOString().split('T')[0],
+    data_fim: document.getElementById('ev-fim').value || null,
+    tipo: document.getElementById('ev-tipo').value,
+    notas: document.getElementById('ev-notas').value || null,
+    criado_por: currentUser.id
+  });
+  setBtnLoading('btn-save-ev', false);
+  if (error) { showToast('❌ Erro ao salvar'); return; }
+  closeModal('modal-evento'); clearForm(['ev-titulo','ev-inicio','ev-fim','ev-notas']); showToast('✅ Evento salvo!');
+  await loadEventos(); renderCalendar('big-calendar');
+}
+
+async function deleteRecord(table, id, reloadFn) {
+  if (!confirm('Tem certeza que deseja excluir?')) return;
+  await db.from(table).delete().eq('id', id);
+  await reloadFn();
+  renderDashboard();
+  showToast('🗑 Removido com sucesso!');
+}
+
+// ===== FILTERS =====
+function filterReservas(filter, btn) {
+  document.querySelectorAll('#page-reservas .tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  renderReservas(filter);
+}
+function filterTarefas(filter, btn) {
+  document.querySelectorAll('#page-tarefas .tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  renderTarefas(filter);
+}
+
+// ===== UTILS =====
+function fmtDate(d) {
+  if (!d) return '-';
+  const dt = new Date(d+'T00:00:00');
+  return dt.toLocaleDateString('pt-BR', {day:'2-digit',month:'short'});
+}
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.opacity='1'; t.style.transform='translateY(0)';
+  setTimeout(()=>{ t.style.opacity='0'; t.style.transform='translateY(10px)'; }, 2800);
+}
+function setBtnLoading(id, loading) {
+  const btn = document.getElementById(id);
+  if (!btn) return;
+  btn.disabled = loading;
+  btn.innerHTML = loading ? '<span class="loading-spinner"></span> Salvando...' : btn.getAttribute('data-label') || 'Salvar';
+}
+function clearForm(ids) { ids.forEach(id => { const el = document.getElementById(id); if(el) el.value=''; }); }
+function openModal(id, catPreset) {
+  document.getElementById(id).classList.add('open');
+  if (catPreset && id === 'modal-task') { const c = document.getElementById('task-cat'); if(c) c.value = catPreset; }
+}
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function closeModalOverlay(e, id) { if(e.target===e.currentTarget) closeModal(id); }
+function navigate(page, el) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  if (el) el.classList.add('active');
+  if (window.innerWidth < 768) document.getElementById('sidebar').classList.remove('open');
+}
+function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
+
+// ===== SESSION CHECK =====
+window.addEventListener('DOMContentLoaded', async () => {
+  const { data: { session } } = await db.auth.getSession();
+  if (session?.user) { await loadApp(session.user); }
+  // Set today's date as default for date inputs
+  const today = new Date().toISOString().split('T')[0];
+  document.querySelectorAll('input[type="date"]').forEach(el => { if(!el.value) el.defaultValue = today; });
+});
+</script>
+</body>
+</html>
